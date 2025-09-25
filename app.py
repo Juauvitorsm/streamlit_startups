@@ -3,11 +3,9 @@ import requests
 import pandas as pd
 from streamlit_option_menu import option_menu
 
-
 from config import API_URL
 
 st.set_page_config(page_title="Busca de Empresas", page_icon="🏢", layout="wide")
-
 
 params = st.query_params
 
@@ -22,7 +20,9 @@ if "show_dashboard" not in st.session_state:
 if "form_type" not in st.session_state:
     st.session_state["form_type"] = "login"
 if "all_companies_data" not in st.session_state:
-    st.session_state["all_companies_data"] = None 
+    st.session_state["all_companies_data"] = None
+if "home_page_search_results" not in st.session_state:
+    st.session_state["home_page_search_results"] = None
 
 
 def display_dashboard(company_data):
@@ -30,7 +30,7 @@ def display_dashboard(company_data):
     st.caption(f"ID da Empresa: {company_data.get('id', 'N/A')}")
     st.markdown("---")
 
-    if st.button("⬅️ Voltar para a Lista"): 
+    if st.button("⬅️ Voltar para a Lista"):
         st.session_state["show_dashboard"] = False
         st.rerun()
 
@@ -80,38 +80,57 @@ def display_dashboard(company_data):
 def home_page():
     if st.session_state["show_dashboard"]:
         display_dashboard(st.session_state["selected_company_data"])
-    else:
-        st.title("🏠 Home")
-        st.write("Digite uma palavra-chave para buscar empresas.")
+        return
 
+    st.title("🏠 Home")
+    st.write("Digite uma palavra-chave para buscar empresas.")
+
+    all_phases = sorted(list(set(
+        comp.get('fase_da_startup', 'N/A')
+        for comp in st.session_state.get('all_companies_data', [])
+    )))
+    all_phases.insert(0, "Todas as Fases")
+
+    col1, col2 = st.columns([3, 1])
+    with col1:
         query = st.text_input("🔍 Pesquisar", key="query_input")
-        search_button = st.button("Buscar")
+    with col2:
+        selected_phase = st.selectbox("🚀 Filtrar por Fase:", all_phases, key="home_phase_select")
 
-        if search_button and query:
-            headers = {"Authorization": f"Bearer {st.session_state['token']}"}
-            try:
-                response = requests.get(f"{API_URL}/search", params={"query": query}, headers=headers)
-                response.raise_for_status()
-                st.session_state["search_results"] = response.json()
-                st.rerun()
-            except requests.exceptions.RequestException as err:
-                st.error(f"Erro: {err}")
+    search_button = st.button("Buscar")
 
-        if st.session_state["search_results"]:
-            st.success(f"Encontramos {len(st.session_state['search_results'])} empresas:")
-            df_results = pd.DataFrame(st.session_state["search_results"])
+    if search_button:
+        headers = {"Authorization": f"Bearer {st.session_state['token']}"}
+        try:
+            params = {"query": query}
+            if selected_phase != "Todas as Fases":
+                params["fase"] = selected_phase
+            
+            response = requests.get(f"{API_URL}/optimized_search", params=params, headers=headers)
+            
+            response.raise_for_status()
+            st.session_state["home_page_search_results"] = response.json()
+            st.rerun()
+        except requests.exceptions.RequestException as err:
+            st.error(f"Erro: {err}")
+
+    if st.session_state["home_page_search_results"]:
+        results = st.session_state["home_page_search_results"]
+        if results:
+            st.success(f"Encontramos {len(results)} empresas:")
+            df_results = pd.DataFrame(results)
             st.dataframe(df_results[['nome_da_empresa', 'setor_principal', 'fase_da_startup']])
 
             st.markdown("---")
 
             selected_company_name = st.selectbox(
                 "Selecione uma empresa",
-                [empresa['nome_da_empresa'] for empresa in st.session_state["search_results"]],
+                [empresa['nome_da_empresa'] for empresa in results],
                 key="select_company_dashboard"
             )
 
             selected_company = next(
-                (empresa for empresa in st.session_state["search_results"]
+                (empresa for empresa in results
                  if empresa['nome_da_empresa'] == selected_company_name),
                 None
             )
@@ -120,11 +139,16 @@ def home_page():
                 if st.button("📊 Ver Dashboard"):
                     st.session_state["show_dashboard"] = True
                     st.rerun()
+        else:
+            st.info("Nenhuma empresa encontrada com estes critérios.")
 
 
 def list_companies_page():
+    if st.session_state["show_dashboard"]:
+        display_dashboard(st.session_state["selected_company_data"])
+        return
+
     st.title("📄 Lista de Empresas")
-    
 
     if st.session_state["all_companies_data"] is None:
         st.info("Carregando empresas...")
@@ -133,30 +157,50 @@ def list_companies_page():
             response = requests.get(f"{API_URL}/companies", headers=headers)
             response.raise_for_status()
             st.session_state["all_companies_data"] = response.json()
-            st.rerun() 
+            st.rerun()
         except requests.exceptions.RequestException as err:
             st.error(f"Erro ao buscar empresas: {err}")
-            return 
+            return
 
+    all_phases = sorted(list(set(
+        comp.get('fase_da_startup', 'N/A')
+        for comp in st.session_state["all_companies_data"]
+    )))
+    all_phases.insert(0, "Todas as Fases")
 
-    search_term = st.text_input("🔍 Pesquisar por nome, setor ou fase da startup:", key="list_search")
-    
+    with st.form("filter_form"):
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            search_term = st.text_input("🔍 Pesquisar por nome, setor ou solução:", key="list_search")
+        with col2:
+            selected_phase = st.selectbox("🚀 Filtrar por Fase:", all_phases, key="phase_select")
+        
+        submit_button = st.form_submit_button("Aplicar Filtros")
 
-    if search_term:
-        filtered_companies = [
-            comp for comp in st.session_state["all_companies_data"]
-            if search_term.lower() in str(comp.get('nome_da_empresa', '')).lower()
-            or search_term.lower() in str(comp.get('setor_principal', '')).lower()
-            or search_term.lower() in str(comp.get('fase_da_startup', '')).lower()
-        ]
-    else:
+    if submit_button or "filtered_results" not in st.session_state:
         filtered_companies = st.session_state["all_companies_data"]
 
+        if selected_phase != "Todas as Fases":
+            filtered_companies = [
+                comp for comp in filtered_companies
+                if comp.get('fase_da_startup', 'N/A') == selected_phase
+            ]
+        
+        if search_term:
+            filtered_companies = [
+                comp for comp in filtered_companies
+                if search_term.lower() in str(comp.get('nome_da_empresa', '')).lower()
+                or search_term.lower() in str(comp.get('setor_principal', '')).lower()
+                or search_term.lower() in str(comp.get('solucao', '')).lower()
+            ]
+        st.session_state["filtered_results"] = filtered_companies
+    
+    else:
+        filtered_companies = st.session_state["filtered_results"]
+    
     if filtered_companies:
         st.success(f"Exibindo {len(filtered_companies)} empresas:")
         df_filtered = pd.DataFrame(filtered_companies)
-        
-
         st.dataframe(df_filtered[['nome_da_empresa', 'setor_principal', 'fase_da_startup']], use_container_width=True)
 
         st.markdown("---")
@@ -166,16 +210,16 @@ def list_companies_page():
             [comp['nome_da_empresa'] for comp in filtered_companies],
             key="list_select_company"
         )
-        
+
         selected_company = next((comp for comp in filtered_companies if comp['nome_da_empresa'] == selected_company_name), None)
-        
+
         if selected_company:
             st.session_state["selected_company_data"] = selected_company
             if st.button("📊 Ver Dashboard da Empresa"):
                 st.session_state["show_dashboard"] = True
                 st.rerun()
     else:
-        st.info("Nenhuma empresa encontrada com este termo.")
+        st.info("Nenhuma empresa encontrada com estes filtros.")
 
 
 def login_form():
@@ -225,11 +269,18 @@ def logout():
     st.query_params.clear()
     st.rerun()
     
-# ----------------------------
-# Main (sem alteração)
-# ----------------------------
 def main():
     if st.session_state.get("token"):
+        # Garante que a lista de empresas seja carregada após o login
+        if st.session_state["all_companies_data"] is None:
+            headers = {"Authorization": f"Bearer {st.session_state.get('token', '')}"}
+            try:
+                response = requests.get(f"{API_URL}/companies", headers=headers)
+                response.raise_for_status()
+                st.session_state["all_companies_data"] = response.json()
+            except requests.exceptions.RequestException as err:
+                st.error(f"Erro ao carregar empresas: {err}")
+                
         with st.sidebar:
             st.markdown("## 🚀 Painel Interativo")
             escolha = option_menu(
