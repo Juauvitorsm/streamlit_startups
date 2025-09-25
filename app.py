@@ -250,19 +250,27 @@ def register_form():
     with st.form("register_form"):
         email = st.text_input("E-mail")
         password = st.text_input("Senha", type="password")
+        confirm_password = st.text_input("Confirme a Senha", type="password")
         submit_button = st.form_submit_button("Cadastrar")
 
     if submit_button:
-        response = requests.post(
-            f"{API_URL}/register",
-            json={"email": email, "password": password}
-        )
-        if response.status_code == 200:
-            st.success("Conta criada com sucesso! Agora faça login.")
-            st.session_state["form_type"] = "login"
-            st.rerun()
+        # Check if passwords match and are not empty
+        if not password or not confirm_password:
+            st.error("❌ Por favor, preencha todos os campos de senha.")
+        elif password != confirm_password:
+            st.error("❌ As senhas não coincidem. Por favor, tente novamente.")
         else:
-            st.error(f"Erro: {response.json().get('detail', 'Erro desconhecido')}")
+            # If passwords match, proceed with registration
+            response = requests.post(
+                f"{API_URL}/register",
+                json={"email": email, "password": password}
+            )
+            if response.status_code == 200:
+                st.success("✅ Conta criada com sucesso! Agora faça login.")
+                st.session_state["form_type"] = "login"
+                st.rerun()
+            else:
+                st.error(f"❌ Erro: {response.json().get('detail', 'Erro desconhecido')}")
 
 def logout():
     st.session_state.clear()
