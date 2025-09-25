@@ -1,0 +1,6 @@
+[theme]
+primaryColor = "#0078A8"             # Um azul-petróleo para os botões e destaques
+backgroundColor = "#F0F2F6"          # Um cinza muito claro como fundo principal
+secondaryBackgroundColor = "#C4C4C4"   # Um cinza mais escuro para os painéis
+textColor = "#303030"                # Texto em cinza escuro para alto contraste
+font = "sans serif"                  # Fonte padrão
