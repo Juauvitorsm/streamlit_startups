@@ -203,7 +203,7 @@ def home_page():
     # 1. Cabeçalho visualmente atraente (AGORA COM SOMBRA FORTE E FUNDO CLARO)
     st.markdown("""
     <div class="header-banner">
-        <h1 class="main-title">Pesquisa de Empresas</h1>
+        <h1 class="main-title">Pesquisa de empresas</h1>
         <p class="subtitle">Obtenha dados estratégicos e tendências de empresas rapidamente.</p>
     </div>
     """, unsafe_allow_html=True)
@@ -220,7 +220,6 @@ def home_page():
     all_phases.insert(0, "Todas as Fases")
 
     # Contêiner customizado para aplicar sombra e bordas
-    # Criamos o formulário aqui para agrupar os inputs e o botão de submit
     with st.form("quick_search_form"): 
         
         # Campos de input principal
@@ -420,12 +419,9 @@ def list_companies_page():
 def login_form():
     st.header("Login")
     with st.form("login_form"):
-        # Forçar a cor do input para ter contraste (opcional, mas recomendado)
-        st.markdown('<label style="color:white">E-mail</label>', unsafe_allow_html=True)
-        email = st.text_input("", placeholder="seu.email@mti.com", label_visibility="collapsed")
-        
-        st.markdown('<label style="color:white">Senha</label>', unsafe_allow_html=True)
-        password = st.text_input("", type="password", placeholder="Insira sua senha", label_visibility="collapsed")
+        # Labels de texto agora visíveis (cor corrigida no CSS)
+        email = st.text_input("E-mail", placeholder="seu.email@mti.com", key="login_email")
+        password = st.text_input("Senha", type="password", placeholder="Insira sua senha", key="login_password")
         
         if st.form_submit_button("Entrar", type="primary"):
             response = requests.post(f"{API_URL}/token", data={"username": email, "password": password}, headers={"Content-Type":"application/x-www-form-urlencoded"})
@@ -443,12 +439,9 @@ def login_form():
 def register_form():
     st.header("Criar Conta")
     with st.form("register_form"):
-        # Forçar a cor do input para ter contraste (opcional, mas recomendado)
-        st.markdown('<label style="color:white">E-mail</label>', unsafe_allow_html=True)
-        email = st.text_input("", placeholder="seu.email@mti.com", label_visibility="collapsed")
-        
-        st.markdown('<label style="color:white">Senha</label>', unsafe_allow_html=True)
-        password = st.text_input("", type="password", placeholder="Crie uma senha com letras e pelo menos dois números", label_visibility="collapsed")
+        # Labels de texto agora visíveis (cor corrigida no CSS)
+        email = st.text_input("E-mail", placeholder="seu.email@mti.com", key="register_email")
+        password = st.text_input("Senha", type="password", placeholder="Crie uma senha com letras e pelo menos dois números", key="register_password")
         
         if st.form_submit_button("Cadastrar", type="primary"):
             response = requests.post(f"{API_URL}/register", json={"email": email, "password": password})
@@ -471,9 +464,9 @@ def logout():
 def custom_sidebar_menu():
     
     menu_items = [
-        {"label": '<i class="bi bi-house-door-fill"></i> Home', "page": "Home"},
-        {"label": '<i class="bi bi-building-fill"></i> Listar Empresas', "page": "Listar Empresas"},
-        {"label": '<i class="bi bi-box-arrow-right"></i> Sair', "page": "Sair"},
+        {"label": 'Home', "page": "Home", "icon_code": 'f433'}, # Código Unicode para bi-house-door-fill
+        {"label": 'Listar Empresas', "page": "Listar Empresas", "icon_code": 'f198'}, # Código Unicode para bi-building-fill
+        {"label": 'Sair', "page": "Sair", "icon_code": 'f14f'}, # Código Unicode para bi-box-arrow-right
     ]
     
     # 1. Título do Menu
@@ -490,26 +483,19 @@ def custom_sidebar_menu():
     for item in menu_items:
         is_selected = st.session_state["current_page"] == item["page"]
         
-        # Renderiza o botão Streamlit real (invisível e funcional)
+        # O label do botão é APENAS o texto. O ícone é injetado via CSS ::before
+        button_label = item['label']
+        
+        # O Streamlit Button real, com o label configurado para ter o texto.
+        # Adicionamos o CSS para injetar o ícone, o que torna a área inteira clicável e resolve o alinhamento.
         if st.button(
-            ' ', # Label vazio para não aparecer na tela
-            key=f"nav_button_{item['page']}", 
-            use_container_width=True, 
-            on_click=set_page, 
+            button_label,
+            key=f"nav_button_{item['page']}",
+            use_container_width=True,
+            on_click=set_page,
             args=(item['page'],)
         ):
-            pass 
-        
-        # 3. Renderiza a APARÊNCIA ESTILIZADA (MARKDOWN)
-        style_class = "menu-item-selected" if is_selected else "menu-item-unselected"
-        st.markdown(
-            f'''
-            <div id="item_{item['page']}" class="{style_class} menu-item-overlay">
-                {item['label']}
-            </div>
-            ''', unsafe_allow_html=True
-        )
-
+            pass
 
 # ------------------- MAIN -------------------
 def main():
@@ -528,7 +514,7 @@ def main():
     # 1. INJEÇÃO DE CSS GLOBAL (CORPORATIVO E MENU CUSTOMIZADO)
     st.markdown("""
     <style>
-    /* Paleta: Azul Marinho (#1B2D45), Destaque Dourado/Cítrico (#FFC300) */
+    /* Paleta: Azul Marinho (#1B2D45), Destaque Azul Escuro (#0F1E33), Destaque Dourado (#FFC300) */
     
     /* Importa Bootstrap Icons */
     @import url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css');
@@ -579,76 +565,93 @@ def main():
         padding-top: 25px; 
     }
     
-    /* ESTILIZANDO OS BOTÕES STREAMLIT REAIS */
+    /* --- ESTILIZAÇÃO DO MENU LATERAL (Botões Nativos com Ícones) --- */
 
-    /* Alvo: O contêiner pai do botão Streamlit, que força o layout */
+    /* Contêiner do botão Streamlit */
     div[data-testid="stSidebarContent"] .stButton {
-        position: relative; 
-        z-index: 900;
-        height: 40px; /* Altura da área de clique (para evitar quebra) */
-        margin-bottom: 10px !important;
-        margin-left: 15px;
-        margin-right: 15px;
-        width: calc(100% - 30px); /* Ocupa a largura total menos as margens */
+        margin: 0 15px 10px 15px !important; /* Margem lateral e inferior */
     }
 
-    /* CHAVE 1: Estilizando o Botão Real (para ser transparente e clicável) */
+    /* Estilo BASE do botão na sidebar */
     div[data-testid="stSidebarContent"] .stButton > button {
-        /* Torna o botão Streamlit real totalmente transparente e clicável */
         background-color: transparent !important;
+        color: #F8F9FA !important; /* Cor do texto padrão */
         border: none !important;
-        color: rgba(0, 0, 0, 0) !important; /* Texto do botão invisível */
-        position: absolute !important;
-        top: 0px !important; 
-        left: 0;
-        right: 0;
-        height: 100% !important; 
-        z-index: 999; /* Garante que o botão (área de clique) fique por cima */
         border-radius: 8px !important;
-        /* Limpa margens e paddings nativos */
-        margin: 0 !important;
-        padding: 0 !important;
-        width: 100% !important;
-    }
-    
-    /* CHAVE 2: Estilo da APARÊNCIA VISUAL (MARKDOWN) */
-    .menu-item-overlay {
+        padding: 12px 15px !important; /* Define a altura do item */
         font-size: 17px;
         font-weight: 500;
-        padding: 12px 15px;
-        border-radius: 8px;
+        text-align: left !important; /* Alinha texto à esquerda */
         transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        white-space: nowrap; 
-        /* Puxa o estilo para cima do botão transparente */
-        margin: -40px 15px 0 15px; 
+        height: auto !important;
+        line-height: 1.2 !important;
+        box-shadow: none !important;
+        /* Habilita o posicionamento para o pseudo-elemento */
         position: relative;
-        z-index: 800; 
     }
     
-    /* Itens NÃO SELECIONADOS (Visual) */
-    .menu-item-unselected {
-        color: #F8F9FA; /* Texto BRANCO */
-        background-color: transparent;
-    }
-    .menu-item-unselected:hover {
-        background-color: rgba(255, 255, 255, 0.1); 
-        color: #FFC300; 
+    /* Estilo Hover (para todos os botões não selecionados) */
+    div[data-testid="stSidebarContent"] .stButton > button:hover {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        color: #FFC300 !important;
     }
 
-    /* Itens SELECIONADOS (Visual Dourado) */
-    .menu-item-selected {
+    /* Estilo do Item SELECIONADO (Fundo Amarelo) */
+    div[data-testid="stSidebarContent"] .stButton > button[aria-selected="true"],
+    div[data-testid="stSidebarContent"] .stButton > button[aria-selected="true"]:hover {
         background-color: #FFC300 !important; /* Fundo DOURADO */
         color: #1B2D45 !important; /* Texto AZUL MARINHO */
-        font-weight: 700;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); 
+        font-weight: 700 !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
-    .menu-item-selected:hover {
-        background-color: #ff9f00 !important; /* Dourado escuro no hover */
-        color: #1B2D45 !important;
+    
+    /* Garante que o ícone e o texto fiquem alinhados */
+    div[data-testid="stSidebarContent"] .stButton > button .subrow {
+        align-items: center; 
+        justify-content: flex-start; /* Alinha tudo à esquerda */
+        gap: 10px; /* Espaço entre ícone e texto */
     }
+
+    /* ********** INJEÇÃO DE ÍCONES NO CSS ********** */
+    /* Usamos o código do unicode para injetar os ícones Bootstrap */
+    
+    /* Ícone Home */
+    div[data-testid="stSidebarContent"] button[key*="nav_button_Home"]::before {
+        font-family: "Bootstrap-Icons" !important;
+        content: "\\f433"; /* Código Unicode para bi-house-door-fill */
+        font-size: 20px;
+        margin-right: 10px;
+    }
+
+    /* Ícone Listar Empresas */
+    div[data-testid="stSidebarContent"] button[key*="nav_button_Listar Empresas"]::before {
+        font-family: "Bootstrap-Icons" !important;
+        content: "\\f198"; /* Código Unicode para bi-building-fill */
+        font-size: 20px;
+        margin-right: 10px;
+    }
+    
+    /* Ícone Sair */
+    div[data-testid="stSidebarContent"] button[key*="nav_button_Sair"]::before {
+        font-family: "Bootstrap-Icons" !important;
+        content: "\\f14f"; /* Código Unicode para bi-box-arrow-right */
+        font-size: 20px;
+        margin-right: 10px;
+    }
+    
+    /* Corrigir a cor do ícone quando o item está SELECIONADO */
+    div[data-testid="stSidebarContent"] .stButton > button[aria-selected="true"]::before {
+        color: #1B2D45 !important; /* Mudar para Azul Marinho no selecionado */
+    }
+    /* Corrigir a cor do ícone no HOVER (se não estiver selecionado) */
+    div[data-testid="stSidebarContent"] .stButton > button:hover:not([aria-selected="true"]) {
+        color: #FFC300 !important; /* Mudar para Dourado no hover */
+    }
+    div[data-testid="stSidebarContent"] .stButton > button:hover:not([aria-selected="true"]) .subrow > div:first-child {
+        color: #FFC300 !important;
+    }
+    /* ********************************************** */
+
 
     /* Título do Menu Principal */
     .menu-title-container {
@@ -663,12 +666,6 @@ def main():
         font-weight: 600;
     }
     
-    /* Estilos para Ícones */
-    .bi {
-        font-size: 20px;
-        margin-right: 10px; 
-        vertical-align: middle;
-    }
     
     /* OUTROS ESTILOS DA PÁGINA (HOME PAGE) */
 
@@ -723,20 +720,30 @@ def main():
         border: 1px solid #E0E4E8; /* Borda mais discreta */
     }
 
-    /* Estilo dos Inputs de Texto (text_input) */
+    /* Estilo dos Inputs de Texto (Geral) */
+    div[data-testid="stTextInput"] > div > label > div > p {
+        color: white !important; /* Garante que os labels 'E-mail' e 'Senha' fiquem brancos na caixa de login */
+        font-weight: 500 !important;
+    }
     div[data-testid="stTextInput"] > div > div > input {
         border-radius: 8px; 
         border: 1px solid #CBD5E0; 
         padding: 12px 15px; 
         box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); 
         transition: all 0.2s ease-in-out;
-        /* Garante que o input tenha fundo e texto com contraste no container azul */
         background-color: white !important; 
         color: #1B2D45 !important;
     }
+    /* Força o texto do placeholder a ser escuro */
+    div[data-testid="stTextInput"] input::placeholder {
+        color: #4A5568 !important; /* Cinza escuro para alto contraste */
+        opacity: 1 !important;
+    }
+
+    /* Estilo dos Inputs de Texto (Foco) - Foco com Azul Escuro */
     div[data-testid="stTextInput"] > div > div > input:focus {
-        border-color: #FFC300; /* Destaque no foco */
-        box-shadow: 0 0 0 2px rgba(255, 195, 0, 0.5); 
+        border-color: #0F1E33; /* Azul Escuro no foco */
+        box-shadow: 0 0 0 2px rgba(15, 30, 51, 0.2); /* Sombra azul suave */
         outline: none;
     }
 
@@ -748,7 +755,6 @@ def main():
         box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
         transition: all 0.2s ease-in-out;
         height: auto; 
-        /* Garante que o selectbox tenha fundo e texto com contraste no container azul */
         background-color: white !important; 
         color: #1B2D45 !important;
     }
@@ -762,41 +768,24 @@ def main():
         color: #1B2D45 !important;
     }
     
-    /* Botão Primário (Geral) - AZUL MARINHO */
+    /* Botão Primário (Geral) - AZUL MARINHO FORTE */
     button[data-testid^="stBaseButton-primary"] {
-        background-color: #FFC300 !important; /* Mudei o primário para Dourado para contraste na tela de login */
-        color: #1B2D45 !important;
+        background-color: #1B2D45 !important; 
+        color: white !important;
         border-radius: 8px !important;
         padding: 12px 25px !important;
         font-weight: 600 !important;
         font-size: 16px !important;
         border: none !important;
-        box-shadow: 0 4px 10px rgba(255, 195, 0, 0.3);
+        box-shadow: 0 4px 10px rgba(27, 45, 69, 0.3);
         transition: all 0.2s ease-in-out;
     }
     button[data-testid^="stBaseButton-primary"]:hover {
-        background-color: #ff9f00 !important; 
-        box-shadow: 0 6px 15px rgba(255, 195, 0, 0.5);
-        transform: translateY(-2px); 
+        background-color: #0F1E33 !important; /* Azul mais escuro no hover */
+        box-shadow: 0 6px 15px rgba(27, 45, 69, 0.5);
+        transform: translateY(-1px); 
     }
     
-    /* Botão Secundário (Geral) */
-    button[data-testid="stSecondaryButton"] {
-        background-color: transparent !important; 
-        color: white !important; 
-        border: 1px solid white !important; /* Borda branca na caixa azul */
-        border-radius: 8px !important;
-        padding: 10px 20px !important;
-        font-weight: 600 !important;
-        box-shadow: none;
-        transition: all 0.2s ease-in-out;
-    }
-    button[data-testid="stSecondaryButton"]:hover {
-        background-color: rgba(255, 255, 255, 0.1) !important; 
-        border-color: white !important;
-        transform: translateY(-1px);
-    }
-
     /* Contêiner de Login Azul Marinho */
     .login-container { 
         max-width: 400px; 
@@ -937,7 +926,7 @@ def main():
         # Quando deslogado, a tela de login/registro aparece após a logo centralizada
         col_center = st.columns([1, 2, 1])
         with col_center[1]:
-
+ 
             if st.session_state["form_type"]=="register":
                 register_form()
             else:
