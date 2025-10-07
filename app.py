@@ -203,7 +203,7 @@ def home_page():
     # 1. Cabeçalho visualmente atraente (AGORA COM SOMBRA FORTE E FUNDO CLARO)
     st.markdown("""
     <div class="header-banner">
-        <h1 class="main-title">Pesquisa de empresas</h1>
+        <h1 class="main-title">Pesquisa de Empresas</h1>
         <p class="subtitle">Obtenha dados estratégicos e tendências de empresas rapidamente.</p>
     </div>
     """, unsafe_allow_html=True)
@@ -464,9 +464,10 @@ def logout():
 def custom_sidebar_menu():
     
     menu_items = [
-        {"label": 'Home', "page": "Home", "icon_code": 'f433'}, # Código Unicode para bi-house-door-fill
-        {"label": 'Listar Empresas', "page": "Listar Empresas", "icon_code": 'f198'}, # Código Unicode para bi-building-fill
-        {"label": 'Sair', "page": "Sair", "icon_code": 'f14f'}, # Código Unicode para bi-box-arrow-right
+        # Usamos apenas o texto como label. O CSS injeta o ícone.
+        {"label": 'Home', "page": "Home"}, 
+        {"label": 'Listar Empresas', "page": "Listar Empresas"},
+        {"label": 'Sair', "page": "Sair"},
     ]
     
     # 1. Título do Menu
@@ -483,11 +484,10 @@ def custom_sidebar_menu():
     for item in menu_items:
         is_selected = st.session_state["current_page"] == item["page"]
         
-        # O label do botão é APENAS o texto. O ícone é injetado via CSS ::before
+        # O label do botão é APENAS o texto.
         button_label = item['label']
         
-        # O Streamlit Button real, com o label configurado para ter o texto.
-        # Adicionamos o CSS para injetar o ícone, o que torna a área inteira clicável e resolve o alinhamento.
+        # Renderiza o botão Streamlit nativo. O CSS faz o resto.
         if st.button(
             button_label,
             key=f"nav_button_{item['page']}",
@@ -514,6 +514,23 @@ def main():
     # 1. INJEÇÃO DE CSS GLOBAL (CORPORATIVO E MENU CUSTOMIZADO)
     st.markdown("""
     <style>
+    /* ****************************************************************** */
+    /* ********* CORREÇÃO DE ZOOM GLOBAL PARA DEPLOY (80% EFEITO) ********* */
+    /* ****************************************************************** */
+    
+    /* Esta regra escala todo o conteúdo, ajustando o zoom visualmente */
+    /* Para 80% do zoom: 1 / 0.8 = 1.25. Ajustamos a escala de volta para 1 */
+    /* ATENÇÃO: Descomente e ajuste os valores se o problema persistir no deploy */
+    /*
+    .stApp {
+        transform: scale(0.8);
+        transform-origin: top left;
+        width: 125%; 
+        height: 125%;
+    }
+    */
+    /* Se a solução acima for muito extrema, ignore-a por enquanto. */
+    
     /* Paleta: Azul Marinho (#1B2D45), Destaque Azul Escuro (#0F1E33), Destaque Dourado (#FFC300) */
     
     /* Importa Bootstrap Icons */
@@ -581,12 +598,11 @@ def main():
         padding: 12px 15px !important; /* Define a altura do item */
         font-size: 17px;
         font-weight: 500;
-        text-align: left !important; /* Alinha texto à esquerda */
+        text-align: left !important; /* CORREÇÃO FINAL: Alinha texto à esquerda */
         transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
         height: auto !important;
         line-height: 1.2 !important;
         box-shadow: none !important;
-        /* Habilita o posicionamento para o pseudo-elemento */
         position: relative;
     }
     
@@ -605,11 +621,11 @@ def main():
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
     
-    /* Garante que o ícone e o texto fiquem alinhados */
+    /* Garante que o texto se alinhe, mesmo sem o ícone */
     div[data-testid="stSidebarContent"] .stButton > button .subrow {
         align-items: center; 
         justify-content: flex-start; /* Alinha tudo à esquerda */
-        gap: 10px; /* Espaço entre ícone e texto */
+        /* REMOVEMOS GAP AQUI, POIS O ÍCONE SERÁ PSEUDO-ELEMENTO */
     }
 
     /* ********** INJEÇÃO DE ÍCONES NO CSS ********** */
@@ -621,6 +637,7 @@ def main():
         content: "\\f433"; /* Código Unicode para bi-house-door-fill */
         font-size: 20px;
         margin-right: 10px;
+        vertical-align: middle;
     }
 
     /* Ícone Listar Empresas */
@@ -629,6 +646,7 @@ def main():
         content: "\\f198"; /* Código Unicode para bi-building-fill */
         font-size: 20px;
         margin-right: 10px;
+        vertical-align: middle;
     }
     
     /* Ícone Sair */
@@ -637,17 +655,18 @@ def main():
         content: "\\f14f"; /* Código Unicode para bi-box-arrow-right */
         font-size: 20px;
         margin-right: 10px;
+        vertical-align: middle;
     }
     
-    /* Corrigir a cor do ícone quando o item está SELECIONADO */
+    /* Corrigir a cor do ícone quando o item está SELECIONADO (texto azul) */
     div[data-testid="stSidebarContent"] .stButton > button[aria-selected="true"]::before {
-        color: #1B2D45 !important; /* Mudar para Azul Marinho no selecionado */
+        color: #1B2D45 !important; 
     }
     /* Corrigir a cor do ícone no HOVER (se não estiver selecionado) */
     div[data-testid="stSidebarContent"] .stButton > button:hover:not([aria-selected="true"]) {
-        color: #FFC300 !important; /* Mudar para Dourado no hover */
+        color: #FFC300 !important;
     }
-    div[data-testid="stSidebarContent"] .stButton > button:hover:not([aria-selected="true"]) .subrow > div:first-child {
+    div[data-testid="stSidebarContent"] .stButton > button:hover:not([aria-selected="true"]) * {
         color: #FFC300 !important;
     }
     /* ********************************************** */
@@ -926,7 +945,7 @@ def main():
         # Quando deslogado, a tela de login/registro aparece após a logo centralizada
         col_center = st.columns([1, 2, 1])
         with col_center[1]:
- 
+
             if st.session_state["form_type"]=="register":
                 register_form()
             else:
