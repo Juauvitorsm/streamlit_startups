@@ -203,7 +203,7 @@ def home_page():
     # 1. Cabeçalho visualmente atraente (AGORA COM SOMBRA FORTE E FUNDO CLARO)
     st.markdown("""
     <div class="header-banner">
-        <h1 class="main-title">Análise Executiva de Mercado</h1>
+        <h1 class="main-title">Pesquisa de Empresas</h1>
         <p class="subtitle">Obtenha dados estratégicos e tendências de empresas rapidamente.</p>
     </div>
     """, unsafe_allow_html=True)
@@ -420,7 +420,7 @@ def login_form():
     st.header("Login")
     with st.form("login_form"):
         # Labels de texto agora visíveis (cor corrigida no CSS)
-        email = st.text_input("E-mail", placeholder="seu.email@exemplo.com", key="login_email")
+        email = st.text_input("E-mail", placeholder="seu.email@mti.com", key="login_email")
         password = st.text_input("Senha", type="password", placeholder="Insira sua senha", key="login_password")
         
         if st.form_submit_button("Entrar", type="primary"):
@@ -440,8 +440,8 @@ def register_form():
     st.header("Criar Conta")
     with st.form("register_form"):
         # Labels de texto agora visíveis (cor corrigida no CSS)
-        email = st.text_input("E-mail", placeholder="seu.email@exemplo.com", key="register_email")
-        password = st.text_input("Senha", type="password", placeholder="Crie uma senha forte", key="register_password")
+        email = st.text_input("E-mail", placeholder="seu.email@mti.com", key="register_email")
+        password = st.text_input("Senha", type="password", placeholder="Crie uma senha com letras e pelo menos dois números", key="register_password")
         
         if st.form_submit_button("Cadastrar", type="primary"):
             response = requests.post(f"{API_URL}/register", json={"email": email, "password": password})
@@ -941,7 +941,7 @@ def main():
         # Quando deslogado, a tela de login/registro aparece após a logo centralizada
         col_center = st.columns([1, 2, 1])
         with col_center[1]:
-            st.markdown('<div class="login-container">', unsafe_allow_html=True)
+
             if st.session_state["form_type"]=="register":
                 register_form()
             else:
