@@ -203,7 +203,7 @@ def home_page():
     # 1. Cabeçalho visualmente atraente (AGORA COM SOMBRA FORTE E FUNDO CLARO)
     st.markdown("""
     <div class="header-banner">
-        <h1 class="main-title">Pesquisa de Empresas</h1>
+        <h1 class="main-title">Análise Executiva de Mercado</h1>
         <p class="subtitle">Obtenha dados estratégicos e tendências de empresas rapidamente.</p>
     </div>
     """, unsafe_allow_html=True)
@@ -420,7 +420,7 @@ def login_form():
     st.header("Login")
     with st.form("login_form"):
         # Labels de texto agora visíveis (cor corrigida no CSS)
-        email = st.text_input("E-mail", placeholder="seu.email@mti.com", key="login_email")
+        email = st.text_input("E-mail", placeholder="seu.email@exemplo.com", key="login_email")
         password = st.text_input("Senha", type="password", placeholder="Insira sua senha", key="login_password")
         
         if st.form_submit_button("Entrar", type="primary"):
@@ -440,8 +440,8 @@ def register_form():
     st.header("Criar Conta")
     with st.form("register_form"):
         # Labels de texto agora visíveis (cor corrigida no CSS)
-        email = st.text_input("E-mail", placeholder="seu.email@mti.com", key="register_email")
-        password = st.text_input("Senha", type="password", placeholder="Crie uma senha com letras e pelo menos dois números", key="register_password")
+        email = st.text_input("E-mail", placeholder="seu.email@exemplo.com", key="register_email")
+        password = st.text_input("Senha", type="password", placeholder="Crie uma senha forte", key="register_password")
         
         if st.form_submit_button("Cadastrar", type="primary"):
             response = requests.post(f"{API_URL}/register", json={"email": email, "password": password})
@@ -463,8 +463,8 @@ def logout():
 # --- FUNÇÃO DO NOVO MENU CUSTOMIZADO E LIMPO (Final) ---
 def custom_sidebar_menu():
     
+    # Note: Usamos o texto puro aqui, e o CSS injeta os ícones.
     menu_items = [
-        # Usamos apenas o texto como label. O CSS injeta o ícone.
         {"label": 'Home', "page": "Home"}, 
         {"label": 'Listar Empresas', "page": "Listar Empresas"},
         {"label": 'Sair', "page": "Sair"},
@@ -517,10 +517,6 @@ def main():
     /* ****************************************************************** */
     /* ********* CORREÇÃO DE ZOOM GLOBAL PARA DEPLOY (80% EFEITO) ********* */
     /* ****************************************************************** */
-    
-    /* Esta regra escala todo o conteúdo, ajustando o zoom visualmente */
-    /* Para 80% do zoom: 1 / 0.8 = 1.25. Ajustamos a escala de volta para 1 */
-    /* ATENÇÃO: Descomente e ajuste os valores se o problema persistir no deploy */
     /*
     .stApp {
         transform: scale(0.8);
@@ -529,7 +525,6 @@ def main():
         height: 125%;
     }
     */
-    /* Se a solução acima for muito extrema, ignore-a por enquanto. */
     
     /* Paleta: Azul Marinho (#1B2D45), Destaque Azul Escuro (#0F1E33), Destaque Dourado (#FFC300) */
     
@@ -595,15 +590,20 @@ def main():
         color: #F8F9FA !important; /* Cor do texto padrão */
         border: none !important;
         border-radius: 8px !important;
-        padding: 12px 15px !important; /* Define a altura do item */
+        padding: 12px 15px !important; /* Define a altura do item e padding inicial */
         font-size: 17px;
         font-weight: 500;
-        text-align: left !important; /* CORREÇÃO FINAL: Alinha texto à esquerda */
+        text-align: left !important; 
         transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
         height: auto !important;
         line-height: 1.2 !important;
         box-shadow: none !important;
         position: relative;
+        width: 100%; /* Garante que o botão ocupe toda a largura */
+        
+        /* CORREÇÃO FINAL: Garante que o texto comece na esquerda */
+        padding-left: 25px !important; 
+        justify-content: flex-start !important;
     }
     
     /* Estilo Hover (para todos os botões não selecionados) */
@@ -621,65 +621,61 @@ def main():
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
     
-    /* Garante que o texto se alinhe, mesmo sem o ícone */
+    /* Garante que o texto se alinhe (remove flexbox centralizado) */
     div[data-testid="stSidebarContent"] .stButton > button .subrow {
         align-items: center; 
-        justify-content: flex-start; /* Alinha tudo à esquerda */
-        /* REMOVEMOS GAP AQUI, POIS O ÍCONE SERÁ PSEUDO-ELEMENTO */
+        justify-content: flex-start !important; /* FORÇA O ALINHAMENTO À ESQUERDA */
+        gap: 10px; /* Espaço entre ícone e texto */
+        width: 100%; 
     }
 
     /* ********** INJEÇÃO DE ÍCONES NO CSS ********** */
-    /* Usamos o código do unicode para injetar os ícones Bootstrap */
     
+    /* Estilo BASE para todos os pseudo-elementos de ícone */
+    div[data-testid="stSidebarContent"] .stButton > button::before {
+        font-family: "Bootstrap-Icons" !important;
+        font-size: 20px;
+        margin-right: 10px; 
+        vertical-align: middle;
+        transition: color 0.2s;
+        color: #F8F9FA; /* Cor padrão do ícone */
+    }
+
     /* Ícone Home */
     div[data-testid="stSidebarContent"] button[key*="nav_button_Home"]::before {
-        font-family: "Bootstrap-Icons" !important;
         content: "\\f433"; /* Código Unicode para bi-house-door-fill */
-        font-size: 20px;
-        margin-right: 10px;
-        vertical-align: middle;
     }
 
     /* Ícone Listar Empresas */
     div[data-testid="stSidebarContent"] button[key*="nav_button_Listar Empresas"]::before {
-        font-family: "Bootstrap-Icons" !important;
         content: "\\f198"; /* Código Unicode para bi-building-fill */
-        font-size: 20px;
-        margin-right: 10px;
-        vertical-align: middle;
     }
     
     /* Ícone Sair */
     div[data-testid="stSidebarContent"] button[key*="nav_button_Sair"]::before {
-        font-family: "Bootstrap-Icons" !important;
         content: "\\f14f"; /* Código Unicode para bi-box-arrow-right */
-        font-size: 20px;
-        margin-right: 10px;
-        vertical-align: middle;
     }
     
-    /* Corrigir a cor do ícone quando o item está SELECIONADO (texto azul) */
+    /* Corrigir a cor do ícone no HOVER */
+    div[data-testid="stSidebarContent"] .stButton > button:hover::before {
+        color: #FFC300 !important;
+    }
+
+    /* Corrigir a cor do ícone quando o item está SELECIONADO */
     div[data-testid="stSidebarContent"] .stButton > button[aria-selected="true"]::before {
-        color: #1B2D45 !important; 
-    }
-    /* Corrigir a cor do ícone no HOVER (se não estiver selecionado) */
-    div[data-testid="stSidebarContent"] .stButton > button:hover:not([aria-selected="true"]) {
-        color: #FFC300 !important;
-    }
-    div[data-testid="stSidebarContent"] .stButton > button:hover:not([aria-selected="true"]) * {
-        color: #FFC300 !important;
+        color: #1B2D45 !important; /* Mudar para Azul Marinho no selecionado */
     }
     /* ********************************************** */
 
 
-    /* Título do Menu Principal */
+    /* Título do Menu Principal - Ajustado o padding-left */
     .menu-title-container {
         color: #DCE0E6; 
         font-size: 15px;
         text-transform: uppercase;
         letter-spacing: 1.5px;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1); 
-        padding: 0 15px 8px 15px; 
+        padding: 0 15px 8px 25px; /* Ajustado o padding-left para 25px */
         margin-bottom: 15px;
         margin-top: 20px; 
         font-weight: 600;
@@ -945,7 +941,7 @@ def main():
         # Quando deslogado, a tela de login/registro aparece após a logo centralizada
         col_center = st.columns([1, 2, 1])
         with col_center[1]:
-
+            st.markdown('<div class="login-container">', unsafe_allow_html=True)
             if st.session_state["form_type"]=="register":
                 register_form()
             else:
