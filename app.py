@@ -420,8 +420,13 @@ def list_companies_page():
 def login_form():
     st.header("Login")
     with st.form("login_form"):
-        email = st.text_input("E-mail", placeholder="seu.email@mti.com")
-        password = st.text_input("Senha", type="password", placeholder="Insira sua senha")
+        # Forçar a cor do input para ter contraste (opcional, mas recomendado)
+        st.markdown('<label style="color:white">E-mail</label>', unsafe_allow_html=True)
+        email = st.text_input("", placeholder="seu.email@mti.com", label_visibility="collapsed")
+        
+        st.markdown('<label style="color:white">Senha</label>', unsafe_allow_html=True)
+        password = st.text_input("", type="password", placeholder="Insira sua senha", label_visibility="collapsed")
+        
         if st.form_submit_button("Entrar", type="primary"):
             response = requests.post(f"{API_URL}/token", data={"username": email, "password": password}, headers={"Content-Type":"application/x-www-form-urlencoded"})
             if response.status_code == 200:
@@ -438,8 +443,13 @@ def login_form():
 def register_form():
     st.header("Criar Conta")
     with st.form("register_form"):
-        email = st.text_input("E-mail", placeholder="seu.email@mti.com")
-        password = st.text_input("Senha", type="password", placeholder="Sua senha deve conter letras e pelo menos dois números")
+        # Forçar a cor do input para ter contraste (opcional, mas recomendado)
+        st.markdown('<label style="color:white">E-mail</label>', unsafe_allow_html=True)
+        email = st.text_input("", placeholder="seu.email@mti.com", label_visibility="collapsed")
+        
+        st.markdown('<label style="color:white">Senha</label>', unsafe_allow_html=True)
+        password = st.text_input("", type="password", placeholder="Crie uma senha com letras e pelo menos dois números", label_visibility="collapsed")
+        
         if st.form_submit_button("Cadastrar", type="primary"):
             response = requests.post(f"{API_URL}/register", json={"email": email, "password": password})
             if response.status_code == 200:
@@ -720,10 +730,13 @@ def main():
         padding: 12px 15px; 
         box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); 
         transition: all 0.2s ease-in-out;
+        /* Garante que o input tenha fundo e texto com contraste no container azul */
+        background-color: white !important; 
+        color: #1B2D45 !important;
     }
     div[data-testid="stTextInput"] > div > div > input:focus {
-        border-color: #1B2D45; 
-        box-shadow: 0 0 0 2px rgba(27, 45, 69, 0.2); 
+        border-color: #FFC300; /* Destaque no foco */
+        box-shadow: 0 0 0 2px rgba(255, 195, 0, 0.5); 
         outline: none;
     }
 
@@ -735,6 +748,9 @@ def main():
         box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
         transition: all 0.2s ease-in-out;
         height: auto; 
+        /* Garante que o selectbox tenha fundo e texto com contraste no container azul */
+        background-color: white !important; 
+        color: #1B2D45 !important;
     }
     div[data-testid="stSelectbox"] > div > button:focus {
         border-color: #1B2D45;
@@ -746,60 +762,62 @@ def main():
         color: #1B2D45 !important;
     }
     
-    /* Botão Primário (Executar Busca) - AZUL MARINHO */
-    button[data-testid="stFormSubmitButton"] {
-        background-color: #1B2D45 !important; 
-        color: white !important;
+    /* Botão Primário (Geral) - AZUL MARINHO */
+    button[data-testid^="stBaseButton-primary"] {
+        background-color: #FFC300 !important; /* Mudei o primário para Dourado para contraste na tela de login */
+        color: #1B2D45 !important;
         border-radius: 8px !important;
         padding: 12px 25px !important;
         font-weight: 600 !important;
         font-size: 16px !important;
         border: none !important;
-        box-shadow: 0 4px 10px rgba(27, 45, 69, 0.2);
+        box-shadow: 0 4px 10px rgba(255, 195, 0, 0.3);
         transition: all 0.2s ease-in-out;
-        margin-top: 25px; 
     }
-    /* MIRA O ELEMENTO INTERNO DO BOTÃO (O BOTÃO REAL) PARA ANULAR O TEMA VERMELHO */
-    button[data-testid^="stBaseButton-primaryFormSubmit"] {
-        background-color: #1B2D45 !important; 
-        border-color: #1B2D45 !important;
-    }
-
-    button[data-testid="stFormSubmitButton"]:hover {
-        background-color: #0F1E33 !important; 
-        box-shadow: 0 6px 15px rgba(27, 45, 69, 0.3);
+    button[data-testid^="stBaseButton-primary"]:hover {
+        background-color: #ff9f00 !important; 
+        box-shadow: 0 6px 15px rgba(255, 195, 0, 0.5);
         transform: translateY(-2px); 
     }
-    button[data-testid^="stBaseButton-primaryFormSubmit"]:hover {
-        background-color: #0F1E33 !important; 
-        border-color: #0F1E33 !important;
-    }
-
-    /* Botão Secundário (Ver Dashboard) */
+    
+    /* Botão Secundário (Geral) */
     button[data-testid="stSecondaryButton"] {
-        background-color: #F0F4F7 !important; 
-        color: #1B2D45 !important; 
-        border: 1px solid #DCE0E6 !important;
+        background-color: transparent !important; 
+        color: white !important; 
+        border: 1px solid white !important; /* Borda branca na caixa azul */
         border-radius: 8px !important;
         padding: 10px 20px !important;
         font-weight: 600 !important;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        box-shadow: none;
         transition: all 0.2s ease-in-out;
     }
     button[data-testid="stSecondaryButton"]:hover {
-        background-color: #DCE0E6 !important; 
-        border-color: #BCC4CD !important;
+        background-color: rgba(255, 255, 255, 0.1) !important; 
+        border-color: white !important;
         transform: translateY(-1px);
-        box-shadow: 0 3px 8px rgba(0,0,0,0.1);
     }
-    
-    .login-container { max-width: 400px; margin: 50px auto; padding: 30px; border-radius: 10px; background-color: #ffffff; box-shadow: 0 0 25px rgba(0, 0, 0, 0.1); text-align: center; }
-    
+
+    /* Contêiner de Login Azul Marinho */
+    .login-container { 
+        max-width: 400px; 
+        margin: 50px auto; 
+        padding: 30px; 
+        border-radius: 10px; 
+        background-color: #1B2D45; /* AZUL MARINHO */
+        color: white; /* Texto Geral Branco */
+        box-shadow: 0 0 25px rgba(0, 0, 0, 0.5); 
+        text-align: center; 
+    }
+    /* Corrigir a cor dos títulos dentro do contêiner de login */
+    .login-container h1, .login-container h2, .login-container h3 {
+        color: white !important;
+    }
+
     /* Esconde o cabeçalho padrão Streamlit */
     #MainMenu, footer, header {visibility: hidden;}
 
     
-    /* --- ESTILOS PARA TABELA CUSTOMIZADA --- */
+    /* --- ESTILOS PARA TABELA CUSTOMIZADA (mantidos) --- */
     
     /* Container Principal */
     div[data-testid="stHorizontalBlock"] {
@@ -850,22 +868,22 @@ def main():
         cursor: pointer;
     }
 
-    /* Ajuste para o botão "Detalhes" para ficar menor e centralizado na célula */
+    /* Ajuste para o botão "Detalhes" */
     div[data-testid="stHorizontalBlock"] > div > div > div > button {
-        padding: 6px 10px !important; /* Ajusta o padding para um botão menor */
-        font-size: 13px !important; /* Tamanho da fonte menor */
-        background-color: #1B2D45 !important; /* Azul Marinho */
+        padding: 6px 10px !important; 
+        font-size: 13px !important; 
+        background-color: #1B2D45 !important; 
         border-color: #1B2D45 !important;
         color: white !important;
-        border-radius: 5px !important; /* Borda levemente arredondada */
+        border-radius: 5px !important; 
         transition: background-color 0.2s, transform 0.2s;
         box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        display: block; /* Garante que o botão ocupe sua largura e se centralize */
-        margin: auto; /* Centraliza o botão dentro da célula */
+        display: block; 
+        margin: auto; 
     }
     div[data-testid="stHorizontalBlock"] > div > div > div > button:hover {
-        background-color: #0F1E33 !important; /* Azul Marinho mais escuro no hover */
-        transform: translateY(-1px); /* Pequeno efeito de elevação */
+        background-color: #0F1E33 !important; 
+        transform: translateY(-1px); 
         box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
     
@@ -886,7 +904,6 @@ def main():
             )
         else:
             # POSICIONAMENTO CENTRALIZADO (PRÉ-LOGIN)
-            # Renderiza a logo centralizada acima do contêiner de login
             st.markdown(
                 f"""
                 <img src="data:image/png;base64,{logo_base64}" alt="Logo da Empresa" class="logo-centered">
