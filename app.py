@@ -1,9 +1,12 @@
 import streamlit as st
 import requests
 import pandas as pd
-from config import API_URL 
-import base64 
-import os 
+from config import API_URL  # Assumindo que config.py com API_URL existe
+import base64  
+import os  
+# --- IMPORTAÇÕES DA AGGRID ---
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode, ColumnsAutoSizeMode
+# ----------------------------
 
 st.set_page_config(page_title="Busca de Empresas", page_icon="🏢", layout="wide")
 
@@ -25,9 +28,13 @@ if "all_companies_data" not in st.session_state:
 if "home_page_search_results" not in st.session_state:
     st.session_state["home_page_search_results"] = None
 if "filtered_results" not in st.session_state:
+    # Garante que, ao iniciar, não há filtro aplicado
     st.session_state["filtered_results"] = None
 if "current_page" not in st.session_state: 
     st.session_state["current_page"] = "Home"
+if "aggrid_selection" not in st.session_state:
+    # Usado para evitar reruns infinitos na seleção de linha do AgGrid
+    st.session_state["aggrid_selection"] = None
 
 
 # --- FUNÇÃO DE CALLBACK PARA O BOTÃO POR LINHA ---
@@ -203,7 +210,7 @@ def home_page():
     # 1. Cabeçalho visualmente atraente (AGORA COM SOMBRA FORTE E FUNDO CLARO)
     st.markdown("""
     <div class="header-banner">
-        <h1 class="main-title">Pesquisa de Empresas</h1>
+        <h1 class="main-title">Pesquisa de empresas</h1>
         <p class="subtitle">Obtenha dados estratégicos e tendências de empresas rapidamente.</p>
     </div>
     """, unsafe_allow_html=True)
@@ -259,7 +266,7 @@ def home_page():
         results = []
     
     total_found = len(results)
-    limited_results = results[:5] 
+    limited_results = results[:5]  
     # ===============================================
 
     if limited_results:
@@ -307,7 +314,7 @@ def home_page():
     elif results == [] and st.session_state.get("home_page_search_results") is not None:
         st.info("Nenhuma empresa encontrada com estes critérios. Tente refinar a busca.")
 
-# ------------------- LISTAR EMPRESAS (MOSTRA TODOS POR PADRÃO) -------------------
+# ------------------- LISTAR EMPRESAS (COM SELEÇÃO E AÇÃO) -------------------
 def list_companies_page():
     # CHAVE 1: SE O DASHBOARD ESTIVER ATIVO, EXIBE ELE E ENCERRA A FUNÇÃO
     if st.session_state["show_dashboard"]:
@@ -315,7 +322,71 @@ def list_companies_page():
         return
 
     st.header("Lista Completa de Empresas")
-    st.caption("Filtre e explore a base de dados completa.")
+    st.caption("Filtre, ordene e explore a base de dados completa.")
+    
+    # --- INJEÇÃO DE CSS DE ALTA PRIORIDADE PARA AGGRID (PARA MANTER O ESTILO) ---
+    st.markdown("""
+    <style>
+        /* 1. Remove Fundo e Borda de Foco/Seleção em Células/Linhas */
+        
+        .ag-cell-focus {
+            background-color: transparent !important; /* Herda o fundo da linha (zebra) */
+            border: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+        }
+
+        /* Linha Selecionada (Substituindo o padrão AgGrid) */
+        .ag-row-selected {
+            background-color: #DCE0E6 !important; /* Cinza claro suave */
+            box-shadow: inset 4px 0 0 #FFC300 !important; /* Borda amarela */
+        }
+        
+        /* Linha em Hover (Substituindo o padrão AgGrid) */
+        .ag-row-hover {
+            background-color: #DCE0E6 !important; /* Cinza claro para o hover */
+        }
+        
+        .ag-row-selected.ag-row-hover {
+            background-color: #DCE0E6 !important; 
+        }
+        
+        /* 2. Estilo do Header e Zebra */
+        .ag-header-cell-label {
+            color: white !important;
+            font-weight: 700; 
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .ag-header-cell, .ag-header-container {
+            background-color: #1B2D45 !important; /* Azul Marinho */
+            border-bottom: 3px solid #FFC300 !important; /* Destaque dourado */
+        }
+        .ag-cell {
+            color: #333333 !important;
+            font-size: 14px;
+        }
+        .ag-row-odd {
+            background-color: white !important;
+        }
+        .ag-row-even {
+            background-color: #F0F4F7 !important; /* Azul muito claro */
+        }
+        .ag-root, .ag-grid-body {
+            border: none !important;
+        }
+        
+        /* 3. Otimiza a aparência do botão customizado para o tema */
+        div[data-testid="stCustomCellRenderer"] button {
+            background-color: #1B2D45 !important;
+            color: white !important;
+            border: none !important;
+        }
+
+    </style>
+    """, unsafe_allow_html=True)
+    # ------------------------------------------------------------------------------------
 
     # TENTA CARREGAR DADOS SE AINDA NÃO EXISTIREM
     if st.session_state["all_companies_data"] is None:
@@ -325,8 +396,6 @@ def list_companies_page():
             response = requests.get(f"{API_URL}/companies", headers=headers)
             response.raise_for_status()
             st.session_state["all_companies_data"] = response.json()
-            st.session_state["filtered_results"] = st.session_state["all_companies_data"]
-            st.rerun()
         except requests.exceptions.RequestException as err:
             st.error(f"Erro ao buscar empresas: {err}")
             return
@@ -334,86 +403,182 @@ def list_companies_page():
     if st.session_state["all_companies_data"] is None:
         return
 
-    current_list_to_display = st.session_state.get("filtered_results", st.session_state["all_companies_data"])
+    companies_data = st.session_state["all_companies_data"]
+    
+    # === LÓGICA DE EXIBIÇÃO: MOSTRAR TUDO SE NÃO HOUVER FILTRO ATIVO ===
+    # Pega 'filtered_results' se existir, caso contrário, usa a lista completa.
+    current_list_to_display = st.session_state.get("filtered_results")
+    
     if current_list_to_display is None:
-        current_list_to_display = st.session_state["all_companies_data"]
+        current_list_to_display = companies_data
 
-    all_phases = sorted(list(set(comp.get('fase_da_startup', 'N/A') for comp in st.session_state["all_companies_data"])))
+    # Cria DataFrame para filtros de formulário e exibição
+    df = pd.DataFrame(companies_data)
+    df_display = pd.DataFrame(current_list_to_display)
+    
+    if df.empty:
+         st.info("Nenhuma empresa encontrada na base de dados.")
+         return
+    
+    # ------------------- LÓGICA DE FILTROS NA SIDEBAR/EXPANDER -------------------
+    all_phases = sorted(list(set(df['fase_da_startup'].unique())))
     all_phases.insert(0, "Todas as Fases")
 
-    with st.expander("Filtrar empresas", expanded=False):
+    with st.expander("Filtrar por empresas", expanded=False):
         col1, col2 = st.columns([3, 1])
         search_term = col1.text_input("Pesquisar por nome, setor ou solução:", placeholder="Digite para filtrar...")
         selected_phase = col2.selectbox("Filtrar por Fase:", all_phases)
         
-        if st.button("Aplicar Filtros", type="primary"): 
-            filtered_companies_temp = st.session_state["all_companies_data"]
+        col_apply, col_clear = st.columns([1, 1])
+
+        if col_apply.button("Aplicar Filtros", type="primary"): 
+            filtered_df = df.copy()
+            
             if selected_phase != "Todas as Fases":
-                filtered_companies_temp = [c for c in filtered_companies_temp if c.get('fase_da_startup')==selected_phase]
+                filtered_df = filtered_df[filtered_df['fase_da_startup'] == selected_phase]
+            
             if search_term:
-                filtered_companies_temp = [c for c in filtered_companies_temp if search_term.lower() in str(c.get('nome_da_empresa','')).lower() 
-                                            or search_term.lower() in str(c.get('setor_principal','')).lower() 
-                                            or search_term.lower() in str(c.get('solucao','')).lower()]
-            st.session_state["filtered_results"] = filtered_companies_temp
+                search_lower = search_term.lower()
+                filtered_df = filtered_df[
+                    filtered_df['nome_da_empresa'].astype(str).str.lower().str.contains(search_lower, na=False) |
+                    filtered_df['setor_principal'].astype(str).str.lower().str.contains(search_lower, na=False) |
+                    filtered_df['solucao'].astype(str).str.lower().str.contains(search_lower, na=False)
+                ]
+            
+            st.session_state["filtered_results"] = filtered_df.to_dict('records')
             st.rerun() 
+            
+        if col_clear.button("Limpar Filtros", type="secondary"):
+            st.session_state["filtered_results"] = None
+            st.rerun()
 
-    if current_list_to_display:
-        st.success(f"Exibindo {len(current_list_to_display)} empresas:")
-        
-        # --- COLUNAS E DADOS DA TABELA (AJUSTADO PARA 6 COLUNAS) ---
-        cols_config = {
-            'Nome da Empresa': 3,
-            'Setor Principal': 2,
-            'Fase da Startup': 2,
-            'Colaboradores': 2,
-            'Investimento?': 2,
-            'Ação': 1 # Nova coluna para o botão
-        }
-        cols_to_display = list(cols_config.keys())
-        col_widths = list(cols_config.values())
+    if df_display.empty:
+         st.info("Nenhuma empresa encontrada com estes filtros.")
+         return
+    
+    st.success(f"Exibindo {len(df_display)} empresas.")
 
-        # 1. CABEÇALHO CUSTOMIZADO
-        header_cols = st.columns(col_widths)
-        for i, header in enumerate(cols_to_display):
-            header_cols[i].markdown(f'<div class="custom-table-header">{header}</div>', unsafe_allow_html=True)
+    # --- CONFIGURAÇÃO DA AGGRID ---
+
+    # 1. Renomear e Selecionar Colunas para exibição
+    df_aggrid = df_display.rename(columns={
+        'nome_da_empresa': 'Nome da Empresa',
+        'setor_principal': 'Setor Principal',
+        'fase_da_startup': 'Fase da Startup',
+        'colaboradores': 'Colaboradores',
+        'recebeu_investimento': 'Investimento?'
+    })
+    
+    COLUMNS_TO_SHOW = ['Nome da Empresa', 'Setor Principal', 'Fase da Startup', 'Colaboradores', 'Investimento?']
+    df_aggrid = df_aggrid[COLUMNS_TO_SHOW + ['id']] 
+
+    # 2. Configuração do GridOptionsBuilder
+    gb = GridOptionsBuilder.from_dataframe(df_aggrid)
+    
+    # HABILITA A SELEÇÃO DE LINHA INTEIRA PARA NAVEGAÇÃO
+    gb.configure_selection(
+        'single', 
+        use_checkbox=False, 
+        groupSelectsChildren=False,
+    )
+    
+    # Adiciona a coluna de AÇÃO (Botão) - Permanece para o clique direto no botão
+    gb.configure_column(
+        "Ação",  
+        cellRenderer="""
+            function(params) {
+                var button = document.createElement('button');
+                button.innerHTML = 'Detalhes';
+                button.style.cssText = 'padding: 6px 10px; cursor: pointer; font-size: 13px; width: 100%; transition: background-color 0.2s, transform 0.2s;';
+                
+                button.addEventListener('click', function() {
+                    Streamlit.setComponentValue({
+                        id: params.data.id, 
+                        action: 'view_dashboard_button' 
+                    });
+                });
+                return button;
+            }
+        """,
+        minWidth=100,
+        maxWidth=120,
+        resizable=False,
+        sortable=False,
+        filter=False,
+        wrapText=True
+    )
+    
+    gb.configure_column("id", hide=True) 
+
+    # Configurações gerais da tabela
+    gb.configure_grid_options(domLayout='normal') 
+    
+    # Define o update_mode para capturar as mudanças de seleção
+    gridOptions = gb.build()
+    gridOptions['enableCellTextSelection'] = True 
+    gridOptions['defaultColDef']['resizable'] = True
+    gridOptions['defaultColDef']['sortable'] = True
+    gridOptions['defaultColDef']['filter'] = True
+    
+    
+    # 3. Renderiza o AgGrid
+    grid_response = AgGrid(
+        df_aggrid, 
+        gridOptions=gridOptions, 
+        data_return_mode=DataReturnMode.AS_INPUT, 
+        update_mode=GridUpdateMode.MODEL_CHANGED, 
+        fit_columns_on_grid_load=True, 
+        allow_unsafe_jscode=True, 
+        enable_enterprise_modules=False,
+        height=400, 
+        width='100%',
+        reload_data=True,
+        key='company_list_aggrid'
+    )
+    
+    # 4. Lógica de Navegação: Pelo Clique no Botão OU Seleção de Linha
+
+    # A. Navegação pelo Botão (Custom Response)
+    custom_response = grid_response.get('custom_response')
+    
+    if custom_response and custom_response.get('action') == 'view_dashboard_button':
+        company_id = custom_response.get('id')
+        selected_company = next((c for c in companies_data if c.get('id') == company_id), None)
         
-        # 2. LINHAS DE DADOS CUSTOMIZADAS COM BOTÃO
-        for index, company in enumerate(current_list_to_display):
-            
-            # Formata os dados para as colunas
-            row_data = [
-                company.get('nome_da_empresa'),
-                company.get('setor_principal'),
-                company.get('fase_da_startup'),
-                company.get('colaboradores'),
-                company.get('recebeu_investimento')
-            ]
-            
-            # Define o estilo da linha (Zebra)
-            row_class = "custom-table-row-even" if index % 2 == 0 else "custom-table-row-odd"
-            
-            # Renderiza as 6 colunas
-            row_cols = st.columns(col_widths)
-            
-            # Renderiza as 5 colunas de dados
-            for i, data in enumerate(row_data):
-                row_cols[i].markdown(
-                    f'<div class="{row_class} custom-table-cell">{data if data else "N/A"}</div>', 
-                    unsafe_allow_html=True
-                )
-            
-            # Renderiza a 6ª coluna: o BOTÃO "Detalhes"
-            with row_cols[5]:
-                st.button(
-                    'Detalhes', # Texto do botão
-                    key=f"view_dash_{company.get('id', index)}", 
-                    on_click=view_company_dashboard, 
-                    args=(company,),
-                    use_container_width=True
-                )
+        if selected_company:
+            view_company_dashboard(selected_company) 
+
+    # B. Navegação pelo Clique na Linha (Selected Rows)
+    selected_rows = grid_response.get('selected_rows')
+    
+    # CORREÇÃO DO VALUERROR: Verifica se a lista de selected_rows existe E se tem dados.
+    if isinstance(selected_rows, list) and len(selected_rows) > 0:
         
-    else:
-        st.info("Nenhuma empresa encontrada com estes filtros.")
+        selected_row_data = selected_rows[0] 
+        company_id = selected_row_data.get('id')
+        
+        # Evita reruns infinitos verificando se a seleção mudou
+        if st.session_state.get('aggrid_selection') != company_id:
+            st.session_state['aggrid_selection'] = company_id
+            
+            selected_company = next((c for c in companies_data if c.get('id') == company_id), None)
+            
+            if selected_company:
+                view_company_dashboard(selected_company)
+    
+    # Adicionando uma verificação para o caso de o AgGrid retornar um DataFrame (embora raro no modo AS_INPUT)
+    elif isinstance(selected_rows, pd.DataFrame) and not selected_rows.empty:
+        # Pega a ID da primeira linha do DataFrame
+        company_id = selected_rows['id'].iloc[0]
+        
+        if st.session_state.get('aggrid_selection') != company_id:
+            st.session_state['aggrid_selection'] = company_id
+            
+            selected_company = next((c for c in companies_data if c.get('id') == company_id), None)
+            
+            if selected_company:
+                view_company_dashboard(selected_company) 
+
 
 # ------------------- LOGIN / REGISTRO -------------------
 def login_form():
@@ -507,25 +672,12 @@ def main():
             with open(logo_filename, "rb") as image_file:
                 logo_base64 = base64.b64encode(image_file.read()).decode("utf-8")
         except Exception as e:
-            # Em produção, você pode querer remover este aviso
             st.warning(f"Não foi possível ler a imagem '{logo_filename}': {e}")
 
 
     # 1. INJEÇÃO DE CSS GLOBAL (CORPORATIVO E MENU CUSTOMIZADO)
     st.markdown("""
     <style>
-    /* ****************************************************************** */
-    /* ********* CORREÇÃO DE ZOOM GLOBAL PARA DEPLOY (80% EFEITO) ********* */
-    /* ****************************************************************** */
-    /*
-    .stApp {
-        transform: scale(0.8);
-        transform-origin: top left;
-        width: 125%; 
-        height: 125%;
-    }
-    */
-    
     /* Paleta: Azul Marinho (#1B2D45), Destaque Azul Escuro (#0F1E33), Destaque Dourado (#FFC300) */
     
     /* Importa Bootstrap Icons */
@@ -755,13 +907,6 @@ def main():
         opacity: 1 !important;
     }
 
-    /* Estilo dos Inputs de Texto (Foco) - Foco com Azul Escuro */
-    div[data-testid="stTextInput"] > div > div > input:focus {
-        border-color: #0F1E33; /* Azul Escuro no foco */
-        box-shadow: 0 0 0 2px rgba(15, 30, 51, 0.2); /* Sombra azul suave */
-        outline: none;
-    }
-
     /* Estilo dos Selectbox (selectbox) */
     div[data-testid="stSelectbox"] > div > button {
         border-radius: 8px;
@@ -819,77 +964,6 @@ def main():
 
     /* Esconde o cabeçalho padrão Streamlit */
     #MainMenu, footer, header {visibility: hidden;}
-
-    
-    /* --- ESTILOS PARA TABELA CUSTOMIZADA (mantidos) --- */
-    
-    /* Container Principal */
-    div[data-testid="stHorizontalBlock"] {
-        padding: 0px !important;
-    }
-
-    /* CABEÇALHO CUSTOMIZADO */
-    .custom-table-header {
-        background-color: #1B2D45; /* Azul Marinho */
-        color: white;
-        font-weight: 700; 
-        font-size: 15px;
-        padding: 12px 5px; 
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-bottom: 3px solid #FFC300; /* Destaque dourado */
-        margin: 0;
-        text-align: left;
-    }
-
-    /* Estilo das Células de Dados */
-    .custom-table-cell {
-        padding: 10px 5px; 
-        font-size: 14px;
-        color: #333333;
-        min-height: 40px;
-        display: flex;
-        align-items: center;
-        border: none;
-    }
-
-    /* Fundo da Linha Ímpar (Branco) */
-    .custom-table-row-odd .custom-table-cell {
-        background-color: white; 
-    }
-
-    /* Fundo da Linha Par (Zebra) */
-    .custom-table-row-even .custom-table-cell {
-        background-color: #F0F4F7; /* Azul muito claro */
-    }
-    
-    /* Hover Efeito: Usamos o seletor mais próximo para o bloco de colunas */
-    div[data-testid^="stHorizontalBlock"]:has(.custom-table-row-odd):hover .custom-table-cell,
-    div[data-testid^="stHorizontalBlock"]:has(.custom-table-row-even):hover .custom-table-cell {
-        background-color: #DCE0E6 !important; 
-        /* Borda vertical Dourada na esquerda, aplicada apenas na primeira célula se quisermos */
-        box-shadow: inset 4px 0 0 #FFC300;
-        cursor: pointer;
-    }
-
-    /* Ajuste para o botão "Detalhes" */
-    div[data-testid="stHorizontalBlock"] > div > div > div > button {
-        padding: 6px 10px !important; 
-        font-size: 13px !important; 
-        background-color: #1B2D45 !important; 
-        border-color: #1B2D45 !important;
-        color: white !important;
-        border-radius: 5px !important; 
-        transition: background-color 0.2s, transform 0.2s;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        display: block; 
-        margin: auto; 
-    }
-    div[data-testid="stHorizontalBlock"] > div > div > div > button:hover {
-        background-color: #0F1E33 !important; 
-        transform: translateY(-1px); 
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-    }
     
     </style>
     """, unsafe_allow_html=True)
@@ -917,6 +991,7 @@ def main():
 
 
     if st.session_state.get("token"):
+        # Tenta carregar todos os dados se não estiverem na sessão (pode ser necessário um rerun)
         if st.session_state["all_companies_data"] is None:
             headers = {"Authorization": f"Bearer {st.session_state.get('token', '')}"}
             try:
@@ -925,9 +1000,8 @@ def main():
                 st.session_state["all_companies_data"] = response.json()
             except requests.exceptions.RequestException as err:
                 st.error(f"Erro ao carregar empresas: {err}")
-
+                
         with st.sidebar:
-            
             custom_sidebar_menu() 
 
         # Lógica de navegação baseada no estado da sessão
